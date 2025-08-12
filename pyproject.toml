@@ -1,0 +1,17 @@
+[project]
+name = "cnblogs-dump"
+version = "1.1.0"
+description = "Dump CNBlogs SQLite to Markdown"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.black]
+line-length = 120
+target-version = ["py313"] 
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "pre-commit>=4.3.0",
+]
