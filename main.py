@@ -1,11 +1,38 @@
+"""
+CNBlogs Dump
+
+Convert cnblogs_blog_*.db to markdown files.
+
+
+Author: undefined443
+Version: 1.2.0
+Created Time: 2025-08-15
+
+Usage:
+    python main.py
+"""
+
 import sqlite3
 import os
 import glob
 import time
 import datetime
+import yaml
 
 
 def parse_time(t):
+    """Parse time string to Unix timestamp.
+
+    Args:
+        t (str): Time string, format: "YYYY-MM-DD HH:MM:SS"
+
+    Returns:
+        int or None: Unix timestamp, return None if parsing failed
+
+    Example:
+        >>> parse_time("2024-01-01 12:00:00")
+        1704096000
+    """
     try:
         return int(time.mktime(datetime.datetime.strptime(t, "%Y-%m-%d %H:%M:%S").timetuple()))
     except Exception:
@@ -13,6 +40,23 @@ def parse_time(t):
 
 
 def load_blogs_from_db():
+    """Load blogs from database file.
+
+    Automatically find matching database file (format: cnblogs_blog_*.db),
+    and read all blog content and metadata.
+
+    Returns:
+        tuple: (blogs, columns)
+            - blogs: blog content list, each element is a row data
+            - columns: database column name list
+
+    Raises:
+        FileNotFoundError: When no matching database file is found
+
+    Example:
+        >>> blogs, columns = load_blogs_from_db()
+        >>> print(f"Found {len(blogs)} blogs")
+    """
     db_files = glob.glob("cnblogs_blog_*.db")
     if not db_files:
         raise FileNotFoundError("No matching database file found.")
@@ -26,32 +70,66 @@ def load_blogs_from_db():
 
 
 def export_blogs_to_markdown(blogs, columns, output_dir="blogs"):
+    """Export blogs to Markdown files.
+
+    Create separate Markdown files for each blog, including:
+    - Title as filename (automatically handle special characters)
+    - Metadata as HTML comments (created time, updated time, source link, description)
+    - Blog content
+    - Preserve original file timestamp
+
+    Args:
+        blogs (list): blog content list, each element is a row data
+        columns (list): database column name list
+        output_dir (str, optional): output directory, default is "blogs"
+
+    Example:
+        >>> blogs, columns = load_blogs_from_db()
+        >>> export_blogs_to_markdown(blogs, columns, "my_blogs")
+
+    Note:
+        - Automatically create output directory (if not exists)
+        - File name format: {ID}_{Title}.md
+        - Special characters will be replaced with underscores
+        - Support HTML and Markdown format blog content
+    """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    for blog in blogs:
-        blog_dict = {col: val for col, val in zip(columns, blog)}
-        title = blog_dict.get("Title", "Untitled")
-        safe_title = "".join(c if c.isalnum() or c in (" ", "_", "-") else "_" for c in title).strip()
-        filename = f"{blog_dict.get('Id', 'unknown')}_{safe_title}.md"
+    for blog_row in blogs:
+        blog = dict(zip(columns, blog_row))
+        front_matter = {
+            'id': blog['Id'],
+            'title': blog['Title'],
+            'date': blog['DateAdded'],
+            'updated': blog['DateUpdated'],
+            'blog_id': blog['BlogId'],
+            'post_type': blog['PostType'],
+            'is_markdown': bool(blog['IsMarkdown']),
+            'is_active': bool(blog['IsActive']),
+            'access_permission': blog['AccessPermission']
+        }
+
+        if blog['SourceUrl']:
+            front_matter['source_url'] = blog['SourceUrl']
+        if blog['Description']:
+            front_matter['description'] = blog['Description']
+        if blog['EntryName']:
+            front_matter['entry_name'] = blog['EntryName']
+        if blog['CreatedTime']:
+            front_matter['created_time'] = blog['CreatedTime']
+        if blog['AutoDesc']:
+            front_matter['auto_desc'] = blog['AutoDesc']
+
+        content = f"---\n{yaml.dump(front_matter, default_flow_style=False, allow_unicode=True)}---\n{blog['Body']}"
+
+        filename = f"{front_matter['id']}.md"
         filepath = os.path.join(output_dir, filename)
         with open(filepath, "w", encoding="utf-8") as f:
-            f.write(f"# {title}\n")
-            f.write(f"<!-- 创建时间: {blog_dict.get('CreatedTime', '')} -->\n")
-            f.write(f"<!-- 更新时间: {blog_dict.get('DateUpdated', '')} -->\n")
-            f.write(f"<!-- 来源链接: {blog_dict.get('SourceUrl', '')} -->\n")
-            f.write(f"<!-- 描述: {blog_dict.get('Description', '')} -->\n\n")
+            f.write(content)
 
-            body = blog_dict.get("Body", "")
-            if blog_dict.get("IsMarkdown", 0):
-                f.write(body)
-            else:
-                f.write("```html\n")
-                f.write(body)
-                f.write("\n```")
-
-        created_time = blog_dict.get("CreatedTime", "")
-        updated_time = blog_dict.get("DateUpdated", "")
+        created_time = blog.get("CreatedTime", "")
+        updated_time = blog.get("DateUpdated", "")
 
         ctime = parse_time(created_time)
         mtime = parse_time(updated_time)
@@ -64,6 +142,17 @@ def export_blogs_to_markdown(blogs, columns, output_dir="blogs"):
 
 
 def main():
+    """Main function, execute blog export process.
+
+    Execute complete blog export process:
+    1. Load blog content from database
+    2. Export to Markdown file
+    3. Preserve original timestamp
+
+    Example:
+        >>> main()
+        # Start exporting blogs...
+    """
     blogs, columns = load_blogs_from_db()
     export_blogs_to_markdown(blogs, columns)
 

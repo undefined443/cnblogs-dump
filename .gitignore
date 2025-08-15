@@ -1,5 +1,11 @@
 *.db
 *.db-shm
 *.db-wal
+.env
 .venv/
+.idea/
+.husky/
+build/
+dist/
 blogs/
+node_modules/
