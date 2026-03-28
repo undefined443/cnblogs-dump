@@ -12,4 +12,9 @@
     uv run db2md.py
     ```
 
-4. 在 `blogs/` 目录下查看转换后的 Markdown 文件
+4. 在 `blogs/` 目录下编辑转换后的 Markdown 文件
+5. 将编辑后的 Markdown 文件上传到博客园：
+
+    ```sh
+    node upload.js
+    ```
