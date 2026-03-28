@@ -9,7 +9,7 @@ Version: 1.2.0
 Created Time: 2025-08-15
 
 Usage:
-    python main.py
+    python db2md.py
 """
 
 import sqlite3

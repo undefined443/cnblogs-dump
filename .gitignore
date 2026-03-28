@@ -1,6 +1,7 @@
 *.db
 *.db-shm
 *.db-wal
+*.zip
 .env
 .venv/
 .idea/
@@ -9,3 +10,4 @@ build/
 dist/
 blogs/
 node_modules/
+.eslintcache
